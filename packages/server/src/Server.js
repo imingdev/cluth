@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import lodash from 'lodash';
 import { match } from 'path-to-regexp';
 import connect from 'connect';
 import compression from 'compression';
@@ -16,6 +17,8 @@ export default class Server {
 
     this.resources = {};
 
+    this.context = {};
+
     this.routeStacks = [];
 
     this.renderer = new Renderer(this);
@@ -23,24 +26,20 @@ export default class Server {
     this.ready = this.ready.bind(this);
     this.setupMiddleware = this.setupMiddleware.bind(this);
     this.useMiddleware = this.useMiddleware.bind(this);
-    this.setBuilderInstance = this.setBuilderInstance.bind(this);
+    this.setDevMiddleware = this.setDevMiddleware.bind(this);
     this.getAssets = this.getAssets.bind(this);
     this.loadResources = this.loadResources.bind(this);
     this.getContext = this.getContext.bind(this);
+    this.setupContext = this.setupContext.bind(this);
     this.listen = this.listen.bind(this);
   }
 
   /**
-   * 设置builder 实例
-   * @param builder
+   * 设置dev中间件
+   * @param middleware
    */
-  async setBuilderInstance(builder) {
-    const { loadResources } = this;
-
-    if (builder) {
-      if (builder.middleware) this.devMiddleware = builder.middleware;
-      if (builder.mfs) await loadResources(builder.mfs);
-    }
+  setDevMiddleware(middleware) {
+    if (middleware) this.devMiddleware = middleware;
   }
 
   /**
@@ -108,25 +107,36 @@ export default class Server {
     };
   }
 
-  getContext(context) {
-    const contextHandle = this.options.server.getContext;
+  getContext(ctx) {
+    const { context } = this;
 
-    if (typeof contextHandle === 'function') return contextHandle(context);
-
-    return context;
+    return lodash.defaultsDeep({}, context, ctx);
   }
 
   async ready() {
-    const { _readyCalled, setupMiddleware, options, loadResources } = this;
+    const { _readyCalled, setupContext, setupMiddleware, options, loadResources } = this;
     if (_readyCalled) return this;
     this._readyCalled = true;
 
-    // Setup nuxt middleware
+    // Setup cluth server context
+    await setupContext();
+
+    // Setup cluth middleware
     await setupMiddleware();
 
     if (!options.dev) await loadResources(fs);
 
     return this;
+  }
+
+  async setupContext() {
+    const { options } = this;
+    const { server } = options;
+    const contextHandle = server.context;
+    let ctx = {};
+    if (typeof contextHandle === 'function') ctx = await contextHandle(options);
+
+    this.context = ctx;
   }
 
   setupMiddleware() {

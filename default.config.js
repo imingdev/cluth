@@ -1,4 +1,5 @@
 module.exports = {
+  dev: process.env.NODE_ENV === 'development',
   env: {},
   build: {
     publicPath: '/',
@@ -7,8 +8,7 @@ module.exports = {
       server: 'server/views',
       static: 'static',
     },
-    alias: {
-    },
+    alias: {},
     watch: {
       aggregateTimeout: 1000,
     },
@@ -32,8 +32,9 @@ module.exports = {
     compressor: {
       threshold: 0,
     },
-    getContext(context) {
-      return context;
+    // options
+    context() {
+      return {};
     },
   },
   dir: {

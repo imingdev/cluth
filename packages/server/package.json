@@ -1,6 +1,6 @@
 {
   "name": "@cluth/server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "mingdev <mingdev@163.com>",
   "main": "./dist/Server.js",
   "dependencies": {

@@ -62,7 +62,7 @@ export default class Renderer {
   requireReactComponent(_path) {
     const { options, resolve, cache } = this;
     const { dev, dir, build } = options;
-    const fullPath = resolve(dir.build, build.dir.server, _path, '.js');
+    const fullPath = resolve(dir.build, build.dir.server, `${_path}.js`);
 
     let component = cache[fullPath] || require(fullPath);
     if (!component) {
