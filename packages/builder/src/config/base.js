@@ -18,7 +18,7 @@ export default class WebpackBaseConfig {
 
   get assetsPath() {
     const { env, options: { dev, build: { dir, filenames } } } = this;
-    const { app, chunk, css, img, font, video, cssModulesName } = filenames || {};
+    const { app, chunk, css, img, font, video, cssModules } = filenames || {};
 
     const resolvePath = (_path) => path.posix.join(dev ? '.' : dir.static, _path);
 
@@ -50,7 +50,7 @@ export default class WebpackBaseConfig {
       img: loadFileNamePath(img) || (dev ? '[path][name].[ext]' : resolvePath('images/[contenthash:8].[ext]')),
       font: loadFileNamePath(font) || (dev ? '[path][name].[ext]' : resolvePath('fonts/[contenthash:8].[ext]')),
       video: loadFileNamePath(video) || (dev ? '[path][name].[ext]' : resolvePath('videos/[contenthash:8].[ext]')),
-      cssModulesName: loadCssModulesName(cssModulesName) || (dev ? '[name]__[local]--[hash:base64:5]' : '_[hash:base64:10]'),
+      cssModules: loadCssModulesName(cssModules) || (dev ? '[name]__[local]--[hash:base64:5]' : '_[hash:base64:10]'),
     };
   }
 
