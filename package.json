@@ -1,0 +1,26 @@
+{
+  "name": "@rextjs/builder",
+  "version": "1.0.9",
+  "author": "mingdev <mingdev@163.com>",
+  "private": true,
+  "scripts": {
+    "build": "cross-env NODE_ENV=production rollup --config rollup.config.js"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^19.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^7.32.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.23.3",
+    "rollup": "^2.48.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not ie <= 8"
+  ]
+}
