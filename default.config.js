@@ -29,6 +29,9 @@ module.exports = {
   server: {
     port: process.env.PORT || process.env.npm_config_port || 7002,
     host: process.env.HOST || process.env.npm_config_host || 'localhost',
+    compressor: {
+      threshold: 0,
+    },
     getContext(context) {
       return context;
     },
