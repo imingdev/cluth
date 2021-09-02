@@ -1,4 +1,5 @@
 import path from 'path';
+import { match } from 'path-to-regexp';
 import React from 'react';
 import parseUrl from 'parseurl';
 import ReactDOMServer from 'react-dom/server';
@@ -15,10 +16,9 @@ export default class Renderer {
 
     this.cache = {};
 
-    this.getAssets = server.getAssets.bind(server);
     this.getContext = server.getContext.bind(server);
 
-    this.getCurrentRoute = this.getCurrentRoute.bind(this);
+    this.getCurrentRouteAssets = this.getCurrentRouteAssets.bind(this);
     this.resolve = this.resolve.bind(this);
     this.requireReactComponent = this.requireReactComponent.bind(this);
     this.createReactElement = this.createReactElement.bind(this);
@@ -27,31 +27,66 @@ export default class Renderer {
     this.render = this.render.bind(this);
   }
 
-  getCurrentRoute(req) {
-    const routes = this.server.routeStacks;
+  /**
+   * 获取资源
+   * @param req
+   * @returns {{entry: string, query: {}, params: {}, styles: string[], scripts: string[]}}
+   */
+  getCurrentRouteAssets(req) {
+    const { options, server, cache } = this;
+    const { dev } = options;
+    const resources = server.resources || {};
     const { pathname, query } = parseUrl(req);
 
-    for (let i = 0, { length } = routes; i < length; i += 1) {
-      const { match, entry } = routes[i];
-      const result = match(pathname);
+    if (!dev && cache[pathname]) return cache[pathname];
+
+    const getAssets = (res) => {
+      const resArr = res || [];
+      return {
+        styles: resArr.filter((row) => /\.css$/.test(row)),
+        scripts: resArr.filter((row) => /\.js$/.test(row) && !/\.hot-update.js$/.test(row)),
+      };
+    };
+
+    const defaultResult = {
+      params: {},
+      query,
+      entry: '_error',
+      ...getAssets(resources._error),
+    };
+    // 去除错误页面
+    const resKeys = Object.keys(resources).filter((n) => n !== '_error');
+    const keysLength = resKeys.length;
+    if (!keysLength) {
+      if (!dev) this.cache[pathname] = defaultResult;
+      return defaultResult;
+    }
+
+    for (let i = 0; i < keysLength; i += 1) {
+      const resName = resKeys[i];
+      const matchPath = `/${resName.replace(new RegExp('/?index$'), '').replace(/_/g, ':')}`;
+      const matchOptions = { decode: decodeURIComponent, strict: true, end: true, sensitive: false };
+      // 正则匹配路径
+      const result = match(matchPath, matchOptions)(pathname);
       if (result) {
+        const resList = resources[resName];
         const params = {};
         Object.keys(result.params).forEach((name) => {
           params[name] = result.params[name];
         });
-        return {
+        const matchResult = {
           params,
           query: queryParse(query) || {},
-          entry,
+          entry: resName,
+          ...getAssets(resList),
         };
+        if (!dev) this.cache[pathname] = matchResult;
+        return matchResult;
       }
     }
 
-    return {
-      params: {},
-      query: {},
-      entry: '_error',
-    };
+    if (!dev) this.cache[pathname] = defaultResult;
+    return defaultResult;
   }
 
   resolve(...p) {
@@ -94,17 +129,15 @@ export default class Renderer {
   async render(req, res, next) {
     const {
       options,
-      getCurrentRoute,
+      getCurrentRouteAssets,
       getContext,
-      getAssets,
       requireReactComponent,
       renderReactToString,
       renderReactToStaticMarkup,
     } = this;
-    const { entry, params, query } = getCurrentRoute(req);
 
     // Get assets
-    const { scripts: pageScripts, styles: pageStyles } = getAssets(entry);
+    const { entry, params, query, scripts: pageScripts, styles: pageStyles } = getCurrentRouteAssets(req);
 
     // Get context
     const context = getContext({ req: { ...req, params, query }, params, query, res });
@@ -124,8 +157,34 @@ export default class Renderer {
       // App
       if (lodash.isFunction(getAppServerSideProps)) appState = await getAppServerSideProps(context);
 
+      // page redirect
+      let redirect;
+      const redirectHandle = (status, redirectPath) => {
+        let defStatus = status;
+        let loc = redirectPath;
+        if (typeof status === 'string') {
+          defStatus = 302;
+          loc = status;
+        }
+        // "back" is an alias for the referrer
+        if (loc === 'back') loc = req.headers.Referrer || '/';
+
+        redirect = {
+          status: defStatus,
+          path: loc,
+        };
+      };
+
       // page
-      if (lodash.isFunction(getServerSideProps)) pageState = await getServerSideProps(context);
+      const pageCtx = lodash.defaultsDeep({}, context, { redirect: redirectHandle });
+      if (lodash.isFunction(getServerSideProps)) pageState = await getServerSideProps(pageCtx);
+
+      if (redirect) {
+        res.setHeader('Location', redirect.path);
+        res.statusCode = redirect.status;
+
+        return res.end();
+      }
 
       // deep state
       if (appState || pageState) state = lodash.defaultsDeep({}, appState || {}, pageState || {});
