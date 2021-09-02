@@ -1,7 +1,6 @@
 import path from 'path';
 import fs from 'fs';
 import lodash from 'lodash';
-import { match } from 'path-to-regexp';
 import connect from 'connect';
 import compression from 'compression';
 import serveStatic from 'serve-static';
@@ -27,7 +26,6 @@ export default class Server {
     this.setupMiddleware = this.setupMiddleware.bind(this);
     this.useMiddleware = this.useMiddleware.bind(this);
     this.setDevMiddleware = this.setDevMiddleware.bind(this);
-    this.getAssets = this.getAssets.bind(this);
     this.loadResources = this.loadResources.bind(this);
     this.getContext = this.getContext.bind(this);
     this.setupContext = this.setupContext.bind(this);
@@ -66,45 +64,8 @@ export default class Server {
     }
 
     this.resources = result;
-    this.routeStacks = Object.keys(result).map((name) => {
-      let pathName;
-      if (name === '_error') {
-        pathName = '(.*)';
-      } else {
-        pathName = name.replace(new RegExp('/?index$'), '').replace(/_/g, ':');
-        pathName = `/${pathName}`;
-      }
-
-      const matchOptions = { decode: decodeURIComponent, strict: true, end: true, sensitive: false };
-      return ({
-        match: match(pathName, matchOptions),
-        entry: name,
-      });
-    });
 
     return Promise.resolve(result);
-  }
-
-  /**
-   * get client assets
-   * @param name  client manifest name
-   * @returns {{styles: string[], scripts: string[]}}
-   */
-  getAssets(name) {
-    const { resources } = this;
-
-    const defaultResult = {
-      styles: [],
-      scripts: [],
-    };
-
-    const res = resources[name] || [];
-    if (!res.length) return defaultResult;
-
-    return {
-      styles: res.filter((row) => /\.css$/.test(row)),
-      scripts: res.filter((row) => /\.js$/.test(row) && !/\.hot-update.js$/.test(row)),
-    };
   }
 
   getContext(ctx) {

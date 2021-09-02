@@ -19,5 +19,7 @@ module.exports = {
     'consistent-return': 0,
     'global-require': 0,
     'max-len': 0,
+    'import/no-dynamic-require': 0,
+    'import/no-unresolved': 0,
   },
 };
